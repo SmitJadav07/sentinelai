@@ -11,6 +11,10 @@ def judge_transaction(event: dict) -> dict:
     anomaly_score = get_anomaly_score(event)
     print(f"Anomaly score: {anomaly_score}")
 
+    generation_config = genai.types.GenerationConfig(
+        max_output_tokens=500,
+    )
+
     prompt = f"""You are orchestrating a council of 3 highly specialized AI security agents for SentinelAI, an enterprise-grade blockchain transaction monitoring system.
 
 TRANSACTION DETAILS:
@@ -61,7 +65,27 @@ Respond ONLY with this exact JSON, zero extra text, zero markdown:
   "anomaly_score": {anomaly_score}
 }}"""
 
-    response = model.generate_content(prompt)
+    import signal
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Gemini API timeout")
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(10)
+
+    try:
+        response = model.generate_content(prompt, generation_config=generation_config)
+        signal.alarm(0)
+    except TimeoutError:
+        signal.alarm(0)
+        print("Gemini timeout - using fallback")
+        return {
+            "behavior_agent": {"vote": "normal", "reason": "Timeout - defaulting to normal"},
+            "risk_agent": {"vote": "normal", "reason": "Timeout - defaulting to normal"},
+            "compliance_agent": {"vote": "normal", "reason": "Timeout - defaulting to normal"},
+            "verdict": "APPROVE",
+            "anomaly": False,
+            "anomaly_score": anomaly_score
+        }
+
     raw = response.text.strip()
     if "```" in raw:
         raw = raw.split("```")[1]
