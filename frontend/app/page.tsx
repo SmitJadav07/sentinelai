@@ -200,8 +200,11 @@ export default function Dashboard() {
       hedera_tx_id: null,
     };
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      const res = await fetch("http://localhost:8000/attack", { method: "POST" });
+      const res = await fetch("http://localhost:8000/attack", { method: "POST", signal: controller.signal });
+      clearTimeout(timeout);
       if (res.ok) {
         const data = await res.json();
         const attackEvent: Event = { ...fakeAttack, ...data, anomaly: true };
@@ -214,6 +217,7 @@ export default function Dashboard() {
         setAlertMsg("$9,999 USDC intercepted → 0x000HACKER9f3a000");
       }
     } catch {
+      clearTimeout(timeout);
       setEvents(prev => [fakeAttack, ...prev]);
       setActiveAnomaly(fakeAttack);
       setAlertMsg("$9,999 USDC intercepted → 0x000HACKER9f3a000");
