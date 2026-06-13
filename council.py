@@ -5,7 +5,11 @@ import google.generativeai as genai
 def judge_transaction(event: dict) -> dict:
     api_key = os.environ.get("GEMINI_API_KEY")
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+    except Exception:
+        model = genai.GenerativeModel("gemini-pro")
 
     prompt = f"""You are a 3-agent AI security council for a blockchain payment system.
 
