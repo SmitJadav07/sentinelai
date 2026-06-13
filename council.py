@@ -1,42 +1,37 @@
 import os
-from groq import Groq
 import json
+import google.generativeai as genai
 
 def judge_transaction(event: dict) -> dict:
-    api_key = os.environ.get("GROQ_API_KEY")
-    print(f"Using Groq key: {api_key[:10] if api_key else 'NOT FOUND'}")
-    
-    client = Groq(api_key=api_key)
+    api_key = os.environ.get("GEMINI_API_KEY")
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
     prompt = f"""You are a 3-agent AI security council for a blockchain payment system.
 
-Transaction to judge:
+Transaction:
 - Action: {event['action']}
 - Amount: ${event['amount']} USDC
-- Target wallet: {event['target']}
-- Agent ID: {event['agent_id']}
+- Target: {event['target']}
+- Agent: {event['agent_id']}
 - Normal baseline: $50 USDC max
 
 Rules:
-- If amount > $150 OR target contains 'unknown': 2+ agents must vote suspicious, verdict = BLOCK, anomaly = true
-- Otherwise: agents vote normal, verdict = APPROVE, anomaly = false
+- If amount > $150 OR target contains 'unknown': 2+ agents vote suspicious, verdict = BLOCK, anomaly = true
+- Otherwise: all agents vote normal, verdict = APPROVE, anomaly = false
 
-Respond ONLY with this exact JSON, no markdown, no extra text:
+Respond ONLY with this JSON, no markdown, no extra text:
 {{
   "behavior_agent": {{"vote": "normal", "reason": "brief reason"}},
   "risk_agent": {{"vote": "normal", "reason": "brief reason"}},
   "compliance_agent": {{"vote": "normal", "reason": "brief reason"}},
   "verdict": "APPROVE",
-  "anomaly": false
+  "anomaly": false,
+  "anomaly_score": 0.1
 }}"""
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    raw = response.choices[0].message.content.strip()
+    response = model.generate_content(prompt)
+    raw = response.text.strip()
     if "```" in raw:
         raw = raw.split("```")[1]
         if raw.startswith("json"):
