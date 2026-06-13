@@ -1,12 +1,36 @@
 import os
-from groq import Groq
 import json
 
-def judge_transaction(event: dict) -> dict:
-    api_key = os.environ.get("GROQ_API_KEY")
-    print(f"Using Groq key: {api_key[:10] if api_key else 'NOT FOUND'}")
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+
+def get_mock_result(event: dict) -> dict:
+    """Mock council result for testing without API calls"""
+    amount = event["amount"]
+    target = event["target"]
     
-    client = Groq(api_key=api_key)
+    # Simple logic: flag if high amount or suspicious wallet
+    is_suspicious = amount > 150 or "unknown" in target
+    
+    return {
+        "behavior_agent": {"vote": "suspicious" if is_suspicious else "normal", "reason": "mock"},
+        "risk_agent": {"vote": "suspicious" if is_suspicious else "normal", "reason": "mock"},
+        "compliance_agent": {"vote": "suspicious" if is_suspicious else "normal", "reason": "mock"},
+        "verdict": "BLOCK" if is_suspicious else "APPROVE",
+        "anomaly": is_suspicious
+    }
+
+def judge_transaction(event: dict) -> dict:
+    if TEST_MODE:
+        print(f"[TEST MODE] Returning mock council result for event {event['id']}")
+        return get_mock_result(event)
+    
+    # Use Gemini API in production
+    import google.generativeai as genai
+    api_key = os.environ.get("GEMINI_API_KEY")
+    print(f"Using Gemini key: {api_key[:10] if api_key else 'NOT FOUND'}")
+    
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")
 
     prompt = f"""You are a 3-agent AI security council for a blockchain payment system.
 
@@ -30,13 +54,8 @@ Respond ONLY with this exact JSON, no markdown, no extra text:
   "anomaly": false
 }}"""
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2
-    )
-
-    raw = response.choices[0].message.content.strip()
+    response = model.generate_content(prompt)
+    raw = response.text.strip()
     if "```" in raw:
         raw = raw.split("```")[1]
         if raw.startswith("json"):

@@ -135,6 +135,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"feed" | "audit">("feed");
   const [, setTick] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [activeAnomaly, setActiveAnomaly] = useState<Event | null>(FAKE_EVENTS.find(e => e.anomaly) ?? null);
   const alertTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -154,7 +155,12 @@ export default function Dashboard() {
         if (res.ok) {
           const data = await res.json();
           if (data.length > 0) {
-            setEvents(data);
+            setEvents(prev => {
+              const localAnomalies = prev.filter(e => e.anomaly);
+              const backendIds = new Set(data.map((e: Event) => e.id));
+              const preserved = localAnomalies.filter(e => !backendIds.has(e.id));
+              return [...preserved, ...data];
+            });
             const latest = data[0];
             setChartData(prev => {
               const next = [...prev, { time: formatTime(latest.timestamp), score: latest.anomaly ? (latest.council?.anomaly_score ?? 0.9) : Math.random() * 0.15 + 0.05 }];
@@ -170,8 +176,7 @@ export default function Dashboard() {
   const total = events.length;
   const blocked = events.filter(e => e.anomaly).length;
   const protected$ = events.filter(e => e.anomaly).reduce((s, e) => s + e.amount, 0);
-  const latestAnomaly = events.find(e => e.anomaly);
-  const threatLevel = latestAnomaly ? "HIGH" : "LOW";
+  const threatLevel = activeAnomaly ? "HIGH" : "LOW";
 
   async function simulateAttack() {
     setAttacking(true);
@@ -199,14 +204,18 @@ export default function Dashboard() {
       const res = await fetch("http://localhost:8000/attack", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
-        setEvents(prev => [data, ...prev]);
-        setAlertMsg(`$${data.amount.toLocaleString()} USDC intercepted → ${truncate(data.target, 22)}`);
+        const attackEvent: Event = { ...fakeAttack, ...data, anomaly: true };
+        setEvents(prev => [attackEvent, ...prev]);
+        setActiveAnomaly(attackEvent);
+        setAlertMsg(`$${attackEvent.amount.toLocaleString()} USDC intercepted → ${truncate(attackEvent.target, 22)}`);
       } else {
         setEvents(prev => [fakeAttack, ...prev]);
+        setActiveAnomaly(fakeAttack);
         setAlertMsg("$9,999 USDC intercepted → 0x000HACKER9f3a000");
       }
     } catch {
       setEvents(prev => [fakeAttack, ...prev]);
+      setActiveAnomaly(fakeAttack);
       setAlertMsg("$9,999 USDC intercepted → 0x000HACKER9f3a000");
     }
 
@@ -344,11 +353,11 @@ export default function Dashboard() {
               <span style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0" }}>AI Security Council</span>
             </div>
             <div style={{ padding: 16 }}>
-              {latestAnomaly?.council ? (
+              {activeAnomaly?.council ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <AgentVote icon="🔍" name="Behavior Agent" vote={latestAnomaly.council.behavior_agent.vote} reason={latestAnomaly.council.behavior_agent.reason} />
-                  <AgentVote icon="⚠️" name="Risk Agent" vote={latestAnomaly.council.risk_agent.vote} reason={latestAnomaly.council.risk_agent.reason} />
-                  <AgentVote icon="📋" name="Compliance Agent" vote={latestAnomaly.council.compliance_agent.vote} reason={latestAnomaly.council.compliance_agent.reason} />
+                  <AgentVote icon="🔍" name="Behavior Agent" vote={activeAnomaly.council.behavior_agent.vote} reason={activeAnomaly.council.behavior_agent.reason} />
+                  <AgentVote icon="⚠️" name="Risk Agent" vote={activeAnomaly.council.risk_agent.vote} reason={activeAnomaly.council.risk_agent.reason} />
+                  <AgentVote icon="📋" name="Compliance Agent" vote={activeAnomaly.council.compliance_agent.vote} reason={activeAnomaly.council.compliance_agent.reason} />
                   <div style={{ marginTop: 4, padding: "14px 16px", borderRadius: 12, background: "linear-gradient(135deg, rgba(239,68,68,0.1), rgba(220,38,38,0.05))", border: "1px solid rgba(239,68,68,0.2)", textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "#ef4444", fontWeight: 700, letterSpacing: "0.1em", marginBottom: 6 }}>COUNCIL VERDICT</div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 8 }}>
@@ -358,7 +367,7 @@ export default function Dashboard() {
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.1)", borderRadius: 20, padding: "4px 12px" }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
                       <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>
-                        {((latestAnomaly.council.anomaly_score) * 100).toFixed(0)}% Suspicion Score
+                        {((activeAnomaly.council.anomaly_score) * 100).toFixed(0)}% Suspicion Score
                       </span>
                     </div>
                   </div>
