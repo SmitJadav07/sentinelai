@@ -53,7 +53,8 @@ const INITIAL_CHART = [
   { time: "09:30", score: 0.11 }, { time: "09:35", score: 0.07 },
 ];
 
-function timeAgo(ts: number) {
+function timeAgo(ts: number, mounted: boolean) {
+  if (!mounted) return "just now";
   const s = Math.floor((Date.now() - ts) / 1000);
   if (s < 60) return `${s}s ago`;
   return `${Math.floor(s / 60)}m ago`;
@@ -133,9 +134,12 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState("");
   const [activeTab, setActiveTab] = useState<"feed" | "audit">("feed");
   const [, setTick] = useState(0);
+  const [mounted, setMounted] = useState(false);
   const alertTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date().toLocaleTimeString());
     const t = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString());
       setTick(x => x + 1);
@@ -410,7 +414,7 @@ export default function Dashboard() {
                     <span style={{ fontSize: 11, color: "#334155", fontFamily: "monospace", flex: 1 }}>→ {truncate(e.target, 24)}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 11, color: "#1e293b", fontFamily: "monospace" }}>{timeAgo(e.timestamp)}</span>
+                    <span style={{ fontSize: 11, color: "#1e293b", fontFamily: "monospace" }}>{timeAgo(e.timestamp, mounted)}</span>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 6, background: e.anomaly ? "rgba(239,68,68,0.1)" : "rgba(16,185,129,0.1)", border: `1px solid ${e.anomaly ? "rgba(239,68,68,0.25)" : "rgba(16,185,129,0.25)"}` }}>
                       {e.anomaly ? <XCircle size={11} color="#f87171" /> : <CheckCircle size={11} color="#4ade80" />}
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: e.anomaly ? "#f87171" : "#4ade80" }}>{e.anomaly ? "BLOCKED" : "APPROVED"}</span>
