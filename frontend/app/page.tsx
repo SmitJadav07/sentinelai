@@ -21,7 +21,8 @@ interface Council {
   risk_agent: CouncilVote;
   compliance_agent: CouncilVote;
   verdict: string;
-  suspicion_score: number;
+  anomaly_score: number;
+  anomaly: boolean;
 }
 interface Event {
   id: string;
@@ -40,7 +41,7 @@ interface Event {
 const FAKE_EVENTS: Event[] = [
   { id: "evt_001", timestamp: Date.now() - 4000, agent_id: "agent_01", action: "transfer", amount: 50, target: "0xA3f9b2c1d4e5f678", status: "approved", anomaly: false, council: null, hedera_tx_id: "0.0.1234@1718190000" },
   { id: "evt_002", timestamp: Date.now() - 9000, agent_id: "agent_01", action: "api_call", amount: 12, target: "0xB2c1d4e5f6789012", status: "approved", anomaly: false, council: null, hedera_tx_id: "0.0.1235@1718190010" },
-  { id: "evt_003", timestamp: Date.now() - 18000, agent_id: "agent_01", action: "transfer", amount: 9999, target: "0x000HACKER000x9f3a", status: "blocked", anomaly: true, council: { behavior_agent: { vote: "suspicious", reason: "Amount is 66x above normal baseline of $150" }, risk_agent: { vote: "suspicious", reason: "Destination wallet has zero transaction history" }, compliance_agent: { vote: "normal", reason: "No AML regulatory flags detected" }, verdict: "BLOCK", suspicion_score: 0.92 }, hedera_tx_id: "0.0.1236@1718190020" },
+  { id: "evt_003", timestamp: Date.now() - 18000, agent_id: "agent_01", action: "transfer", amount: 9999, target: "0x000HACKER000x9f3a", status: "blocked", anomaly: true, council: { behavior_agent: { vote: "suspicious", reason: "Amount is 66x above normal baseline of $150" }, risk_agent: { vote: "suspicious", reason: "Destination wallet has zero transaction history" }, compliance_agent: { vote: "normal", reason: "No AML regulatory flags detected" }, verdict: "BLOCK", anomaly_score: 0.92, anomaly: true }, hedera_tx_id: "0.0.1236@1718190020" },
   { id: "evt_004", timestamp: Date.now() - 26000, agent_id: "agent_01", action: "withdraw", amount: 75, target: "0xC3d4e5f678901234", status: "approved", anomaly: false, council: null, hedera_tx_id: "0.0.1237@1718190030" },
   { id: "evt_005", timestamp: Date.now() - 35000, agent_id: "agent_01", action: "transfer", amount: 130, target: "0xD4e5f67890123456", status: "approved", anomaly: false, council: null, hedera_tx_id: "0.0.1238@1718190040" },
 ];
@@ -152,13 +153,13 @@ export default function Dashboard() {
             setEvents(data);
             const latest = data[0];
             setChartData(prev => {
-              const next = [...prev, { time: formatTime(latest.timestamp), score: latest.anomaly ? (latest.council?.suspicion_score ?? 0.9) : Math.random() * 0.15 + 0.05 }];
+              const next = [...prev, { time: formatTime(latest.timestamp), score: latest.anomaly ? (latest.council?.anomaly_score ?? 0.9) : Math.random() * 0.15 + 0.05 }];
               return next.slice(-12);
             });
           }
         }
       } catch { /* Backend not ready yet */ }
-    }, 2000);
+    }, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -184,13 +185,14 @@ export default function Dashboard() {
         risk_agent: { vote: "suspicious", reason: "Destination wallet flagged — zero prior transaction history detected" },
         compliance_agent: { vote: "normal", reason: "No AML or regulatory flags found in compliance database" },
         verdict: "BLOCK",
-        suspicion_score: 0.95,
+        anomaly_score: 0.95,
+        anomaly: true,
       },
       hedera_tx_id: null,
     };
 
     try {
-      const res = await fetch("http://localhost:8000/trigger-anomaly", { method: "POST" });
+      const res = await fetch("http://localhost:8000/attack", { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setEvents(prev => [data, ...prev]);
@@ -352,7 +354,7 @@ export default function Dashboard() {
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(239,68,68,0.1)", borderRadius: 20, padding: "4px 12px" }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444" }} />
                       <span style={{ fontSize: 11, color: "#f87171", fontWeight: 600 }}>
-                        {((latestAnomaly.council.suspicion_score) * 100).toFixed(0)}% Suspicion Score
+                        {((latestAnomaly.council.anomaly_score) * 100).toFixed(0)}% Suspicion Score
                       </span>
                     </div>
                   </div>
@@ -445,7 +447,7 @@ export default function Dashboard() {
                       </td>
                       <td style={{ padding: "13px 20px" }}>
                         {e.hedera_tx_id ? (
-                          <a href={"https://hashscan.io/testnet/transaction/" + e.hedera_tx_id} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#06b6d4", textDecoration: "none", fontWeight: 600 }}>
+                          <a href={"https://hashscan.io/testnet/topic/0.0.5715785"} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#06b6d4", textDecoration: "none", fontWeight: 600 }}>
                             <div style={{ width: 16, height: 16, borderRadius: 4, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <span style={{ fontSize: 8, fontWeight: 800, color: "#06b6d4" }}>H</span>
                             </div>
