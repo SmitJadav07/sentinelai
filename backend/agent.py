@@ -15,6 +15,14 @@ _agent_wallet_address = None
 
 def init_circle_wallet():
     global _wallet_set_id, _agent_wallet_id, _agent_wallet_address
+    saved_wallet_id = os.getenv("CIRCLE_WALLET_ID", "")
+    if saved_wallet_id:
+        print(f"=== CIRCLE: reusing wallet {saved_wallet_id} ===")
+        _agent_wallet_id = saved_wallet_id
+        from arc_agent import get_wallet_address
+        _agent_wallet_address = get_wallet_address(_agent_wallet_id)
+        print(f"=== CIRCLE READY: {_agent_wallet_address} ===")
+        return
     print("=== CIRCLE SETUP STARTING ===")
     try:
         from arc_agent import create_wallet_set, create_agent_wallet, get_wallet_address
