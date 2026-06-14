@@ -1,23 +1,34 @@
 import os
 import json
 import time
+import requests
+
+HEDERA_SERVICE_URL = os.getenv("HEDERA_SERVICE_URL", "http://localhost:8001")
 
 def log_to_hedera(event: dict) -> str:
     try:
-        message = json.dumps({
+        payload = {
             "event_id": event["id"],
-            "agent": event["agent_id"],
+            "agent_id": event["agent_id"],
             "amount": event["amount"],
-            "target": event["target"],
             "status": event["status"],
-            "anomaly": event["anomaly"],
+            "verdict": event.get("council", {}).get("verdict", ""),
+            "anomaly_score": event.get("council", {}).get("anomaly_score", 0),
             "timestamp": event["timestamp"]
-        })
-        account_id = os.getenv("HEDERA_ACCOUNT_ID", "0.0.9224996")
-        timestamp = int(time.time())
-        tx_id = f"{account_id}-{timestamp}"
-        print(f"Hedera log: {tx_id} | {event['status'].upper()}")
-        return f"0.0.9224996@{timestamp}"
+        }
+        response = requests.post(
+            f"{HEDERA_SERVICE_URL}/log",
+            json=payload,
+            timeout=10
+        )
+        if response.status_code == 200:
+            data = response.json()
+            tx_id = data.get("tx_id", "")
+            print(f"Hedera logged: {tx_id}")
+            return tx_id
+        else:
+            raise Exception(f"Hedera service {response.status_code}")
     except Exception as e:
-        print(f"Hedera error: {e}")
-        return f"0.0.9224996@{int(time.time())}"
+        print(f"Hedera fallback: {e}")
+        account = os.getenv("HEDERA_ACCOUNT_ID", "0.0.9224996")
+        return f"{account}@{int(time.time())}"
