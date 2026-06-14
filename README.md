@@ -169,8 +169,8 @@ Verify on hashscan.io: https://hashscan.io/testnet/topic/0.0.9228035
 
 ## Team
 
-- **Eshan Potdar** — Backend, AI Council, Circle/Arc Integration, Hedera
-- **Smit Jadav** — Frontend, ENS Integration, Hedera Service
+- **Eshan Potdar** 
+- **Smit Jadav** 
 
 ---
 
