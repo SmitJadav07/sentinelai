@@ -1,10 +1,10 @@
 import os
 import json
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from google import genai
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
 MEMORY_FILE = "normal_memory.json"
 
 def event_to_text(event: dict) -> str:
@@ -20,9 +20,13 @@ def save_memory(vectors: list):
     with open(MEMORY_FILE, "w") as f:
         json.dump(vectors, f)
 
+def get_embedding(text: str) -> list:
+    result = client.models.embed_content(model="text-embedding-004", contents=text)
+    return result.embeddings[0].values
+
 def get_anomaly_score(event: dict) -> float:
     text = event_to_text(event)
-    vector = model.encode([text])[0].tolist()
+    vector = get_embedding(text)
     memory = load_memory()
     if len(memory) < 5:
         memory.append(vector)
@@ -30,7 +34,9 @@ def get_anomaly_score(event: dict) -> float:
         return 0.0
     current = np.array(vector).reshape(1, -1)
     past = np.array(memory)
-    similarities = cosine_similarity(current, past)[0]
+    similarities = (current @ past.T / (
+        np.linalg.norm(current) * np.linalg.norm(past, axis=1)
+    ))[0]
     avg_similarity = float(np.mean(similarities))
     anomaly_score = round(1.0 - avg_similarity, 4)
     if not event.get('anomaly', False):
