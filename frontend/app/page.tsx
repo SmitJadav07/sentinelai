@@ -576,7 +576,7 @@ export default function Dashboard() {
                     </td>
                     <td style={{ padding: "12px 20px" }}>
                       {e.hedera_tx_id ? (
-                        <a href="https://hashscan.io/testnet/topic/0.0.5715785" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: ACCENT, textDecoration: "none", fontWeight: 500 }}>
+                        <a href="https://hashscan.io/testnet/topic/0.0.9228035" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: ACCENT, textDecoration: "none", fontWeight: 500 }}>
                           View on Hashscan <ExternalLink size={10} />
                         </a>
                       ) : (
