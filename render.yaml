@@ -28,3 +28,19 @@ services:
       - key: LOOP_INTERVAL
         value: "300"
     healthCheckPath: /health
+
+  - type: web
+    name: sentinelai-hedera-service
+    runtime: node
+    rootDir: hedera-service
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: starter
+    envVars:
+      - key: HEDERA_ACCOUNT_ID
+        sync: false
+      - key: HEDERA_PRIVATE_KEY
+        sync: false
+      - key: HEDERA_TOPIC_ID
+        sync: false
+    healthCheckPath: /health
