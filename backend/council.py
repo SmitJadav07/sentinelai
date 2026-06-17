@@ -1,12 +1,12 @@
 import os
 import json
-from groq import Groq
+import requests
 from embeddings import get_anomaly_score
+
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 def judge_transaction(event: dict) -> dict:
     api_key = os.environ.get("GROQ_API_KEY")
-    client = Groq(api_key=api_key)
-
     anomaly_score = get_anomaly_score(event)
     print(f"Anomaly score: {anomaly_score}")
 
@@ -50,12 +50,21 @@ Respond ONLY with JSON, no markdown:
 }}"""
 
     try:
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
+        response = requests.post(
+            GROQ_API_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 500,
+            },
+            timeout=15,
         )
-        raw = response.choices[0].message.content.strip()
+        response.raise_for_status()
+        raw = response.json()["choices"][0]["message"]["content"].strip()
         if "```" in raw:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
@@ -71,5 +80,5 @@ Respond ONLY with JSON, no markdown:
             "compliance_agent": {"vote": "normal", "reason": "API timeout"},
             "verdict": "APPROVE",
             "anomaly": False,
-            "anomaly_score": anomaly_score
+            "anomaly_score": anomaly_score,
         }
