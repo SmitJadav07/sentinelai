@@ -1,12 +1,11 @@
 import os
 import json
-from google import genai
-from google.genai import types
+from groq import Groq
 from embeddings import get_anomaly_score
 
 def judge_transaction(event: dict) -> dict:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
+    api_key = os.environ.get("GROQ_API_KEY")
+    client = Groq(api_key=api_key)
 
     anomaly_score = get_anomaly_score(event)
     print(f"Anomaly score: {anomaly_score}")
@@ -51,12 +50,12 @@ Respond ONLY with JSON, no markdown:
 }}"""
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(max_output_tokens=500)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
         )
-        raw = response.text.strip()
+        raw = response.choices[0].message.content.strip()
         if "```" in raw:
             raw = raw.split("```")[1]
             if raw.startswith("json"):
