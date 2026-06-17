@@ -15,6 +15,11 @@ _agent_wallet_address = None
 
 def init_circle_wallet():
     global _wallet_set_id, _agent_wallet_id, _agent_wallet_address
+
+    if not os.getenv("CIRCLE_API_KEY") or not os.getenv("CIRCLE_ENTITY_SECRET"):
+        print("=== CIRCLE: credentials not configured, skipping wallet init ===")
+        return
+
     saved_wallet_id = os.getenv("CIRCLE_WALLET_ID", "")
     if saved_wallet_id:
         print(f"=== CIRCLE: reusing wallet {saved_wallet_id} ===")

@@ -37,7 +37,7 @@ app.post('/log', async (req, res) => {
   try {
     const event = req.body
     const message = JSON.stringify({
-      event_id: event.id,
+      event_id: event.event_id,
       agent_id: event.agent_id,
       amount: event.amount,
       status: event.status,

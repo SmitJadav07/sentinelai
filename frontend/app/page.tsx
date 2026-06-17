@@ -12,6 +12,8 @@ import {
 import { createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 const publicClient = createPublicClient({ chain: mainnet, transport: http("https://cloudflare-eth.com") });
 const VITALIK_KNOWN = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
 
@@ -218,7 +220,7 @@ export default function Dashboard() {
   useEffect(() => {
     const iv = setInterval(async () => {
       try {
-        const res = await fetch("http://localhost:8000/events");
+        const res = await fetch(`${API_URL}/events`);
         if (res.ok) {
           const data = await res.json();
           if (data.length > 0) {
@@ -261,7 +263,7 @@ export default function Dashboard() {
     const delays = raw.map(d => Math.max(100, Math.floor(d * scale)));
     const ctrl = new AbortController();
     const ft = setTimeout(() => ctrl.abort(), 7800);
-    const fp = fetch("http://localhost:8000/attack", { method: "POST", signal: ctrl.signal })
+    const fp = fetch(`${API_URL}/attack`, { method: "POST", signal: ctrl.signal })
       .then(async r => { if (r.ok) { const d = await r.json(); return { ...fakeAttack, ...d, anomaly: true } as Event; } return fakeAttack; })
       .catch(() => fakeAttack);
     for (let i = 0; i < ATTACK_STAGES.length; i++) {

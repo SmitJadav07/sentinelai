@@ -219,3 +219,7 @@ __marimo__/
 
 .env
 backend/.env
+
+*.db
+normal_memory.json
+__pycache__/
